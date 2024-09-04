@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -109,12 +110,28 @@ func (o *Options) Token(ctx context.Context) (*auth.Token, error) {
 	if err := setAuthHeader(ctx, o.Tp, req); err != nil {
 		return nil, err
 	}
+
+	var headerAttrs []any
+	for key, list := range req.Header {
+		for _, val := range list {
+			headerAttrs = append(headerAttrs, slog.String(key, val))
+		}
+	}
+
+	slog.Info("impersonate.go: Token", slog.String("body", string(b)), slog.Group("o",
+		slog.String("url", o.URL),
+		slog.String("scopes", fmt.Sprintf("%v", o.Scopes)),
+		slog.String("delegates", fmt.Sprintf("%v", o.Delegates)),
+		slog.Int("token_lifetime_seconds", o.TokenLifetimeSeconds),
+		slog.Group("headers", headerAttrs...),
+	))
+
 	resp, body, err := internal.DoRequest(o.Client, req)
 	if err != nil {
 		return nil, fmt.Errorf("credentials: unable to generate access token: %w", err)
 	}
 	if c := resp.StatusCode; c < http.StatusOK || c >= http.StatusMultipleChoices {
-		return nil, fmt.Errorf("credentials: status code %d: %s", c, body)
+		return nil, fmt.Errorf("impersonate.go: credentials: status code %d: %s", c, body)
 	}
 
 	var accessTokenResp impersonateTokenResponse

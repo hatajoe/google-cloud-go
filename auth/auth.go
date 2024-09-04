@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -315,6 +316,7 @@ type cachedTokenProvider struct {
 }
 
 func (c *cachedTokenProvider) Token(ctx context.Context) (*Token, error) {
+	slog.Info("auth.go: Token In")
 	if c.blockingRefresh {
 		return c.tokenBlocking(ctx)
 	}
@@ -322,16 +324,31 @@ func (c *cachedTokenProvider) Token(ctx context.Context) (*Token, error) {
 }
 
 func (c *cachedTokenProvider) tokenNonBlocking(ctx context.Context) (*Token, error) {
+	slog.Info("auth.go: tokenNonBlocking", slog.Any("tokenState", c.tokenState()))
 	switch c.tokenState() {
 	case fresh:
 		c.mu.Lock()
 		defer c.mu.Unlock()
+		slog.Info("auth.go: tokenNonBlocking", slog.Group("cachedToken",
+			slog.String("state", "fresh"),
+			slog.String("value", c.cachedToken.Value),
+			slog.String("type", c.cachedToken.Type),
+			slog.Time("expiry", c.cachedToken.Expiry),
+			slog.Any("metadata", c.cachedToken.Metadata),
+		))
 		return c.cachedToken, nil
 	case stale:
 		c.tokenAsync(ctx)
 		// Return the stale token immediately to not block customer requests to Cloud services.
 		c.mu.Lock()
 		defer c.mu.Unlock()
+		slog.Info("auth.go: tokenNonBlocking", slog.Group("cachedToken",
+			slog.String("state", "stale"),
+			slog.String("value", c.cachedToken.Value),
+			slog.String("type", c.cachedToken.Type),
+			slog.Time("expiry", c.cachedToken.Expiry),
+			slog.Any("metadata", c.cachedToken.Metadata),
+		))
 		return c.cachedToken, nil
 	default: // invalid
 		return c.tokenBlocking(ctx)
@@ -398,6 +415,12 @@ func (c *cachedTokenProvider) tokenBlocking(ctx context.Context) (*Token, error)
 		return nil, err
 	}
 	c.cachedToken = t
+	slog.Info("auth.go: tokenBlocking", slog.Group("cachedToken",
+		slog.String("value", c.cachedToken.Value),
+		slog.String("type", c.cachedToken.Type),
+		slog.Time("expiry", c.cachedToken.Expiry),
+		slog.Any("metadata", c.cachedToken.Metadata),
+	))
 	return t, nil
 }
 
