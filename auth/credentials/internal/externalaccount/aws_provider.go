@@ -120,7 +120,7 @@ func (sp *awsSubjectProvider) subjectToken(ctx context.Context) (string, error) 
 	if sp.RegionalCredVerificationURL == "" {
 		sp.RegionalCredVerificationURL = defaultRegionalCredentialVerificationURL
 	}
-	if sp.requestSigner == nil {
+	if sp.requestSigner == nil || sp.securityCredentialsProvider != nil {
 		headers := make(map[string]string)
 		if sp.shouldUseMetadataServer() {
 			awsSessionToken, err := sp.getAWSSessionToken(ctx)
