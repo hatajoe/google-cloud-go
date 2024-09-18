@@ -19,7 +19,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -75,16 +74,6 @@ func ExchangeToken(ctx context.Context, opts *Options) (*TokenResponse, error) {
 		}
 		data.Set("options", string(opts))
 	}
-
-	slog.Info("sts_exchange.go: ExchangeToken", slog.Group("data",
-		slog.String("audience", opts.Request.Audience),
-		slog.String("grant_type", GrantType),
-		slog.String("requested_token_type", TokenType),
-		slog.String("subject_token_type", opts.Request.SubjectTokenType),
-		slog.String("subject_token", opts.Request.SubjectToken),
-		slog.String("scope", strings.Join(opts.Request.Scope, " ")),
-	))
-
 	return doRequest(ctx, opts, data)
 }
 
@@ -97,38 +86,19 @@ func doRequest(ctx context.Context, opts *Options, data url.Values) (*TokenRespo
 		return nil, fmt.Errorf("credentials: failed to properly build http request: %w", err)
 
 	}
-	var headerAttrs []any
 	for key, list := range opts.Headers {
 		for _, val := range list {
 			req.Header.Add(key, val)
-			headerAttrs = append(headerAttrs, slog.String(key, val))
 		}
 	}
 	req.Header.Set("Content-Length", strconv.Itoa(len(encodedData)))
-	headerAttrs = append(headerAttrs, strconv.Itoa(len(encodedData)))
-
-	slog.Info("sts_exchange.go: doRequest", slog.String("body", encodedData), slog.Group("opts",
-		slog.String("endpoint", opts.Endpoint),
-		slog.Group("request",
-			slog.Group("acting_party",
-				slog.String("actor_token", opts.Request.ActingParty.ActorToken),
-				slog.String("actor_token_type", opts.Request.ActingParty.ActorTokenType),
-			),
-		),
-		slog.Group("authentication",
-			slog.Any("auth_style", opts.Authentication.AuthStyle),
-			slog.String("client_id", opts.Authentication.ClientID),
-			slog.String("client_secret", opts.Authentication.ClientSecret),
-		),
-		slog.Group("headers", headerAttrs...),
-	))
 
 	resp, body, err := internal.DoRequest(opts.Client, req)
 	if err != nil {
 		return nil, fmt.Errorf("credentials: invalid response from Secure Token Server: %w", err)
 	}
 	if c := resp.StatusCode; c < http.StatusOK || c > http.StatusMultipleChoices {
-		return nil, fmt.Errorf("sts_exchange.go: credentials: status code %d: %s", c, body)
+		return nil, fmt.Errorf("credentials: status code %d: %s", c, body)
 	}
 	var stsResp TokenResponse
 	if err := json.Unmarshal(body, &stsResp); err != nil {
