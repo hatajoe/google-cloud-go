@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -275,7 +274,6 @@ type tokenProvider struct {
 }
 
 func (tp *tokenProvider) Token(ctx context.Context) (*auth.Token, error) {
-	slog.Info("externalaccount.go: Token In")
 	subjectToken, err := tp.stp.subjectToken(ctx)
 	if err != nil {
 		return nil, err
@@ -332,10 +330,8 @@ func (tp *tokenProvider) Token(ctx context.Context) (*auth.Token, error) {
 // newSubjectTokenProvider determines the type of credsfile.CredentialSource needed to create a
 // subjectTokenProvider
 func newSubjectTokenProvider(o *Options) (subjectTokenProvider, error) {
-	slog.Info("externalaccount.go: newSubjectTokenProvider In")
 	reqOpts := &RequestOptions{Audience: o.Audience, SubjectTokenType: o.SubjectTokenType}
 	if o.AwsSecurityCredentialsProvider != nil {
-		slog.Info("externalaccount.go: awsSubjectProvider Return")
 		return &awsSubjectProvider{
 			securityCredentialsProvider: o.AwsSecurityCredentialsProvider,
 			TargetResource:              o.Audience,

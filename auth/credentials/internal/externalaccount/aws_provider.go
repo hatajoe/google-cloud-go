@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -91,31 +90,6 @@ type awsSubjectProvider struct {
 }
 
 func (sp *awsSubjectProvider) subjectToken(ctx context.Context) (string, error) {
-	var requestSignerAttr []any
-	if sp.requestSigner != nil {
-		requestSignerAttr = []any{
-			slog.String("region_name", sp.requestSigner.RegionName),
-			slog.Group("aws_security_credentials",
-				slog.String("access_key_id", sp.requestSigner.AwsSecurityCredentials.AccessKeyID),
-				slog.String("secret_access_key", sp.requestSigner.AwsSecurityCredentials.SecretAccessKey),
-				slog.String("session_token", sp.requestSigner.AwsSecurityCredentials.SessionToken),
-			),
-		}
-	}
-	slog.Info("aws_provider.go: awsSubjectProvider.subjectToken", slog.Group("provider",
-		slog.String("environment_id", sp.EnvironmentID),
-		slog.String("region_url", sp.RegionURL),
-		slog.String("regional_cred_verification_url", sp.RegionalCredVerificationURL),
-		slog.String("cred_verification_url", sp.CredVerificationURL),
-		slog.String("imds_v2_session_token_url", sp.IMDSv2SessionTokenURL),
-		slog.String("target_resource", sp.TargetResource),
-		slog.Group("request_signer", requestSignerAttr...),
-		slog.Group("req_opts",
-			slog.String("audience", sp.reqOpts.Audience),
-			slog.String("subject_token_type", sp.reqOpts.SubjectTokenType),
-		),
-	))
-
 	// Set Defaults
 	if sp.RegionalCredVerificationURL == "" {
 		sp.RegionalCredVerificationURL = defaultRegionalCredentialVerificationURL
@@ -271,9 +245,7 @@ func (sp *awsSubjectProvider) getRegion(ctx context.Context, headers map[string]
 }
 
 func (sp *awsSubjectProvider) getSecurityCredentials(ctx context.Context, headers map[string]string) (result *AwsSecurityCredentials, err error) {
-	slog.Info("aws_provider.go: awsSubjectProvider.getSecurityCredentials")
 	if sp.securityCredentialsProvider != nil {
-		slog.Info("sp.securityCredentialsProvider.AwsSecurityCredentials")
 		return sp.securityCredentialsProvider.AwsSecurityCredentials(ctx, sp.reqOpts)
 	}
 	if canRetrieveSecurityCredentialFromEnvironment() {
